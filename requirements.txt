@@ -1,0 +1,15 @@
+streamlit
+transformers
+torch
+Pillow
+scikit-learn
+pandas
+spacy
+matplotlib
+sastrawi
+nltk
+joblib
+huggingface_hub
+imblearn
+seaborn
+openpyxl
