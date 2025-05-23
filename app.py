@@ -17,10 +17,10 @@ stop_words = set(stopwords.words('indonesian'))
 
 # === Fungsi Praproses Teks ===
 def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
-    tokens = text.split()
-    cleaned = [stemmer.stem(word) for word in tokens]
+    text = text.lower()  
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text) 
+    tokens = text.split()  
+    cleaned = [word for word in tokens if word not in stop_words]  
     return ' '.join(cleaned)
     
 # === Load Models ===
@@ -31,24 +31,24 @@ def load_image_from_url(url):
 
 @st.cache_resource
 def load_bert_finetuned():
-    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_ft_fullpraproses")
-    tokenizer = AutoTokenizer.from_pretrained("Adkurrr/ikd_ft_fullpraproses")
+    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_ft_StopwordRemovalOnly")
+    tokenizer = AutoTokenizer.from_pretrained("Adkurrr/ikd_ft_StopwordRemovalOnly")
     return model, tokenizer
 
 @st.cache_resource
 def load_bert_pretrained():
-    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_pretrained_fullpraproses")
-    tokenizer = AutoTokenizer.from_pretrained("Adkurrr/ikd_pretrained_fullpraproses")
+    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_pretrained_StopwordRemovalOnly")
+    tokenizer = AutoTokenizer.from_pretrained("Adkurrr/ikd_pretrained_StopwordRemovalOnly")
     return model, tokenizer
 
 @st.cache_resource
 def load_lr_model():
-    file_path = hf_hub_download(repo_id="Adkurrr/lr-SVM-fullpraproses", filename="lr_model.pkl")
+    file_path = hf_hub_download(repo_id="Adkurrr/lr-SVM-StopwordRemovalOnly", filename="lr_model.pkl")
     return joblib.load(file_path)
 
 @st.cache_resource
 def load_svm_model():
-    file_path = hf_hub_download(repo_id="Adkurrr/Lr-SVM-fullpraproses", filename="svm_model.pkl")
+    file_path = hf_hub_download(repo_id="Adkurrr/Lr-SVM-StopwordRemovalOnly", filename="svm_model.pkl")
     return joblib.load(file_path)
 
 # === Prediction Functions ===
@@ -65,36 +65,35 @@ def predict_with_model(text, model):
     return model.predict([text])[0]
 
 #Halaman streamlit
-elif menu == "Prediksi Sentimen":
-    st.title("Prediksi Sentimen Ulasan IKD")
-    st.write("Skenario : Hanya menghapus stopwords (Clenasing + Stopword Removal)")
+st.title("Prediksi Sentimen Ulasan IKD")
+st.write("Skenario : Hanya menghapus stopwords (Clenasing + Stopword Removal)")
 
-    text_input = st.text_area("Masukkan ulasan:", "")
-    model_choice = st.selectbox("Pilih Model", [
-        "BERT Finetuned", "BERT Pretrained", "Logistic Regression", "SVM"
-    ])
+text_input = st.text_area("Masukkan ulasan:", "")
+model_choice = st.selectbox("Pilih Model", [
+    "BERT Finetuned", "BERT Pretrained", "Logistic Regression", "SVM"
+])
 
-    if st.button("🔍 Prediksi Sentimen"):
-        if not text_input.strip():
-            st.warning("⚠️ Ulasan Tidak Boleh Kosong")
+if st.button("🔍 Prediksi Sentimen"):
+    if not text_input.strip():
+        st.warning("⚠️ Ulasan Tidak Boleh Kosong")
+    else:
+        # Praproses semua input sebelum diprediksi
+        processed_text = preprocess_text(text_input)
+
+        if model_choice == "BERT Finetuned":
+            model, tokenizer = load_bert_finetuned()
+            label, probs = predict_with_bert(processed_text, model, tokenizer)
+        elif model_choice == "BERT Pretrained":
+            model, tokenizer = load_bert_pretrained()
+            label, probs = predict_with_bert(processed_text, model, tokenizer)
+        elif model_choice == "Logistic Regression":
+            model = load_lr_model()
+            label = predict_with_model(processed_text, model)
+        elif model_choice == "SVM":
+            model = load_svm_model()
+            label = predict_with_model(processed_text, model)
         else:
-            # Praproses semua input sebelum diprediksi
-            processed_text = preprocess_text(text_input)
+            label = "?"
 
-            if model_choice == "BERT Finetuned":
-                model, tokenizer = load_bert_finetuned()
-                label, probs = predict_with_bert(processed_text, model, tokenizer)
-            elif model_choice == "BERT Pretrained":
-                model, tokenizer = load_bert_pretrained()
-                label, probs = predict_with_bert(processed_text, model, tokenizer)
-            elif model_choice == "Logistic Regression":
-                model = load_lr_model()
-                label = predict_with_model(processed_text, model)
-            elif model_choice == "SVM":
-                model = load_svm_model()
-                label = predict_with_model(processed_text, model)
-            else:
-                label = "?"
-
-            sentimen_label = "Positif" if str(label) in ["1", "positif", "positive"] else "Negatif"
-            st.success(f"Prediksi Sentimen: {sentimen_label}")
+        sentimen_label = "Positif" if str(label) in ["1", "positif", "positive"] else "Negatif"
+        st.success(f"Prediksi Sentimen: {sentimen_label}")
