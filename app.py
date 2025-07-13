@@ -31,7 +31,7 @@ def load_image_from_url(url):
 
 @st.cache_resource
 def load_bert_finetuned():
-    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_ft_StopwordRemovalOnly")
+    model = AutoModelForSequenceClassification.from_pretrained("Adkurrr/ikd_ft_fullpraproses")
     tokenizer = AutoTokenizer.from_pretrained("Adkurrr/ikd_ft_StopwordRemovalOnly")
     return model, tokenizer
 
